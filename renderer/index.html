@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+  <title>Torrentry</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Tekster sættes fra strings.js: data-i18n = tekst, data-i18n-ph = placeholder,
+       data-i18n-title = title + aria-label -->
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand"><img class="brand-icon" src="icon.png" alt="" /> Torrentry</div>
+      <div class="side-head">
+        <span data-i18n="SrvTitle"></span>
+        <button class="icon-btn" id="btn-new-server" data-i18n-title="SrvNew">＋</button>
+      </div>
+      <nav id="server-list" aria-label="Servers"></nav>
+      <div class="side-head"><span data-i18n="FltTitle"></span></div>
+      <nav id="filter-list" aria-label="Filters"></nav>
+      <div class="sidebar-foot">
+        <div id="foot"></div>
+        <button class="icon-btn foot-btn" id="btn-about" data-i18n-title="MenuAbout">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></svg>
+        </button>
+        <label class="lang-pick" data-i18n-title="lang.label">
+          <span class="lang-icon" aria-hidden="true">🌐</span>
+          <select id="lang-select"></select>
+        </label>
+      </div>
+    </aside>
+
+    <main id="main">
+      <div id="toolbar">
+        <button class="tool" data-cmd="sidebar" data-tip="MenuSidebar" data-key="Ctrl+B">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M9 4v16" /></svg>
+        </button>
+        <span class="tool-sep"></span>
+        <button class="tool" data-cmd="addFile" data-tip="TipAddFile" data-key="Ctrl+O">
+          <svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" /><path d="M12 11v6M9 14h6" /></svg>
+        </button>
+        <button class="tool" data-cmd="addMagnet" data-tip="TipAddMagnet" data-key="Ctrl+U">
+          <svg viewBox="0 0 24 24"><path d="m6 15-4-4 6.75-6.77a7.79 7.79 0 0 1 11 11L13 22l-4-4 6.39-6.36a2.14 2.14 0 0 0-3-3L6 15" /><path d="m5 8 4 4M12 15l4 4" /></svg>
+        </button>
+        <span class="tool-sep"></span>
+        <button class="tool tool-start" data-cmd="start" data-tip="TipStart">
+          <svg viewBox="0 0 24 24" class="fill"><path d="M8 5.5v13l10.5-6.5z" /></svg>
+        </button>
+        <button class="tool" data-cmd="stop" data-tip="TipStop">
+          <svg viewBox="0 0 24 24" class="fill"><rect x="6.5" y="6.5" width="11" height="11" rx="2" /></svg>
+        </button>
+        <button class="tool" data-cmd="recheck" data-tip="MenuRecheck">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="m8.5 12.2 2.4 2.4 4.7-5.2" /></svg>
+        </button>
+        <button class="tool tool-danger" data-cmd="removeMenu" data-tip="TipRemove">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
+        </button>
+        <span class="spacer"></span>
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4-4" /></svg>
+          <input id="search" type="search" spellcheck="false" autocomplete="off" data-i18n-ph="SearchPh" />
+        </div>
+        <button class="tool" data-cmd="refresh" data-tip="MenuRefresh" data-key="F5">
+          <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L4 9" /><path d="M4 4v5h5" /><path d="M4 13a8 8 0 0 0 14.9 3.9L20 15" /><path d="M20 20v-5h-5" /></svg>
+        </button>
+      </div>
+
+      <div id="banner" hidden></div>
+
+      <div id="list-wrap" tabindex="0">
+        <table id="tlist"><colgroup></colgroup><thead></thead><tbody></tbody></table>
+        <div id="list-msg" hidden></div>
+      </div>
+
+      <div id="splitter" aria-hidden="true"></div>
+
+      <section id="details">
+        <div class="det-head">
+          <div class="view-switch" id="det-tabs">
+            <button data-tab="general" data-i18n="TabGeneral"></button>
+            <button data-tab="trackers" data-i18n="TabTrackers"></button>
+            <button data-tab="peers" data-i18n="TabPeers"></button>
+            <button data-tab="files" data-i18n="TabContent"></button>
+          </div>
+          <span class="det-title" id="det-title"></span>
+        </div>
+        <div id="det-body"></div>
+      </section>
+
+      <footer id="statusbar">
+        <span id="sb-status"></span>
+        <span class="spacer"></span>
+        <span id="sb-sel"></span>
+        <span id="sb-down"></span>
+        <span id="sb-up"></span>
+        <span id="sb-count"></span>
+      </footer>
+    </main>
+
+    <aside id="editor" class="panel" hidden>
+      <header class="panel-head">
+        <h2 id="editor-title"></h2>
+        <button class="icon-btn" id="editor-close" data-i18n-title="BtnClose">✕</button>
+      </header>
+      <form id="server-form" autocomplete="off" novalidate>
+        <label><span data-i18n="SrvClient"></span><select name="type"></select></label>
+        <label><span data-i18n="SrvName"></span><input name="name" /></label>
+        <label><span id="url-label"></span><input name="url" spellcheck="false" /></label>
+        <label id="user-wrap"><span data-i18n="SrvUser"></span><input name="user" spellcheck="false" /></label>
+        <label><span data-i18n="SrvPass"></span><input name="pass" type="password" /></label>
+        <label class="check"><input type="checkbox" name="noSSL" /> <span data-i18n="SrvNoSSL"></span></label>
+        <p class="hint" id="encrypt-hint" hidden data-i18n="NoKeyring"></p>
+        <p class="form-error" id="form-error" hidden></p>
+        <footer class="panel-foot">
+          <button type="button" class="btn btn-danger" id="btn-delete" hidden data-i18n="BtnDelete"></button>
+          <span class="spacer"></span>
+          <button type="button" class="btn" id="btn-test" data-i18n="BtnTest"></button>
+          <button type="submit" class="btn btn-primary" data-i18n="BtnSave"></button>
+        </footer>
+      </form>
+    </aside>
+  </div>
+
+  <div id="ctx" class="ctx" hidden></div>
+  <div id="modal" class="modal-backdrop" hidden><div class="modal" id="modal-box"></div></div>
+  <div id="drop" hidden><div class="drop-box" data-i18n="DropHint"></div></div>
+  <div id="toasts"></div>
+
+  <script src="strings.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
