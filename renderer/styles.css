@@ -117,9 +117,10 @@ svg.fill { fill: currentColor; stroke: none; }
 .tname { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .tname .t { overflow: hidden; text-overflow: ellipsis; }
 .tname .err { color: var(--danger); font-weight: 700; flex-shrink: 0; }
-.prog { display: grid; grid-template-columns: 1fr 46px; align-items: center; gap: 8px; }
-.prog span { text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; color: #c3c8d8; }
-.m-bar { height: 6px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+/* Procenten står midt i feltet, og bjælken vokser bag den */
+.prog { position: relative; }
+.prog span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .7); }
+.m-bar { height: 18px; background: var(--bg); border-radius: 5px; overflow: hidden; }
 .m-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s ease; }
 .m-bar i.ok { background: var(--ok); }
 .m-bar i.idle { background: #4b5370; }
