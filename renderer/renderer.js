@@ -151,12 +151,12 @@ function renderFilters() {
     </div>`).join('');
 }
 
-// Kolonnebredder: navnekolonnen fylder resten af pladsen
+// Kolonnebredder: navnekolonnen fylder resten af pladsen, indtil brugeren selv har trukket i den
 function sizeCols() {
   const cols = visibleCols();
   const w = (c) => ui.widths[c.k] || c.w;
   const other = cols.filter((c) => c.k !== 'name').reduce((s, c) => s + w(c), 0);
-  const nameW = Math.max(w(COLS[0]), $('#list-wrap').clientWidth - other);
+  const nameW = ui.widths.name || Math.max(COLS[0].w, $('#list-wrap').clientWidth - other);
   $('#tlist colgroup').innerHTML = cols.map((c) => `<col style="width:${c.k === 'name' ? nameW : w(c)}px">`).join('');
   $('#tlist').style.width = nameW + other + 'px';
 }
