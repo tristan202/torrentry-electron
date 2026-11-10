@@ -802,6 +802,9 @@ function wire() {
     else if (e.key === 'F5') { e.preventDefault(); cmd('refresh'); }
   });
 
+  // WebView2's egen menu (Tilbage, Genindlæs, ...) vises kun i tekstfelter
+  document.addEventListener('contextmenu', (e) => { if (!e.target.closest('input, textarea')) e.preventDefault(); });
+
   // Indsæt et magnet-link hvor som helst (uden for tekstfelter)
   document.addEventListener('paste', (e) => {
     if (e.target.closest('input, textarea')) return;
@@ -825,7 +828,7 @@ function wire() {
     depth = 0;
     $('#drop').hidden = true;
     if (!needServer()) return;
-    const files = [...e.dataTransfer.files].filter((f) => /\.torrent$/i.test(f.name)).map((f) => api.pathForFile(f));
+    const files = [...e.dataTransfer.files].filter((f) => /\.torrent$/i.test(f.name));
     if (files.length) { api.addFiles(state.current, files, {}).then(reportAdd); return; }
     const text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
     if (/^(magnet:|https?:)/im.test(text)) api.addUrls(state.current, text, {}).then(reportAdd);

@@ -1,9 +1,7 @@
 // Deluge via Web UI'ens JSON-RPC (.../json) med cookie-login.
 // Web UI'en logger kun ind med en adgangskode og skal være forbundet til en
 // daemon; er den ikke det, forbindes der til den første daemon i listen.
-'use strict';
-
-const { request, cookieFrom, Serial, compute, num, str, pos, t } = require('./common');
+import { request, b64, cookieFrom, Serial, compute, num, str, pos, t } from './common.js';
 
 // Accepterer fx https://host/deluge, https://host/deluge/ eller .../deluge/json
 function normalizeUrl(u) {
@@ -29,7 +27,7 @@ class Deluge {
     if (ck) this.cookie = ck;
     if (r.status === 401) throw new Error('HTTP 401 - ' + t('ErrDLProxyAuth'));
     if (r.status !== 200) throw new Error(`HTTP ${r.status} - ` + t('ErrCheckUrl', { x: '.../deluge' }));
-    try { return JSON.parse(r.body.toString('utf8')); } catch { throw new Error(t('ErrInvalidResponse', { x: 'Deluge' })); }
+    try { return JSON.parse(r.text); } catch { throw new Error(t('ErrInvalidResponse', { x: 'Deluge' })); }
   }
   static err(j) {
     if (j && j.error) {
@@ -139,7 +137,7 @@ class Deluge {
     if (dir) o.download_location = dir;
     return o;
   }
-  async addFile(buf, start, dir) { await this.call('core.add_torrent_file', ['upload.torrent', buf.toString('base64'), this.options(start, dir)]); }
+  async addFile(buf, start, dir) { await this.call('core.add_torrent_file', ['upload.torrent', b64(buf), this.options(start, dir)]); }
   async addUrl(url, start, dir) {
     const m = url.toLowerCase().startsWith('magnet:') ? 'core.add_torrent_magnet' : 'core.add_torrent_url';
     await this.call(m, [url, this.options(start, dir)]);
@@ -157,4 +155,4 @@ class Deluge {
   }
 }
 
-module.exports = Deluge;
+export default Deluge;

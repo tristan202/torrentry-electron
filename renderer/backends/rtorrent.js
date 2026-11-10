@@ -1,7 +1,5 @@
 // rTorrent via XML-RPC over HTTP(S) med Basic-auth (typisk .../RPC2)
-'use strict';
-
-const { request, basicAuth, Serial, compute, num, str, t } = require('./common');
+import { request, b64, basicAuth, Serial, compute, num, str, t } from './common.js';
 
 function normalizeUrl(u) {
   u = String(u || '').trim();
@@ -19,7 +17,7 @@ const xmlUnesc = (s) => s.replace(/&(lt|gt|quot|apos|amp|#\d+|#x[0-9a-f]+);/gi, 
 });
 
 function encValue(v) {
-  if (Buffer.isBuffer(v)) return `<value><base64>${v.toString('base64')}</base64></value>`;
+  if (v instanceof Uint8Array) return `<value><base64>${b64(v)}</base64></value>`;
   if (typeof v === 'number') return Number.isInteger(v) ? `<value><i8>${v}</i8></value>` : `<value><double>${v}</double></value>`;
   if (typeof v === 'boolean') return `<value><boolean>${v ? 1 : 0}</boolean></value>`;
   if (Array.isArray(v)) return `<value><array><data>${v.map(encValue).join('')}</data></array></value>`;
@@ -81,8 +79,7 @@ function decResponse(xml) {
       s = xmlUnesc(s);
       if (['i4', 'i8', 'i2', 'int', 'double'].includes(ty.n)) r = Number(s);
       else if (ty.n === 'boolean') r = s.trim() === '1';
-      else if (ty.n === 'base64') r = Buffer.from(s, 'base64');
-      else r = s;
+            else r = s;
     }
     tag(); // </value>
     return r;
@@ -131,7 +128,7 @@ class RTorrent {
       });
       if (r.status === 401) throw new Error('HTTP 401 - ' + t('ErrBadLogin'));
       if (r.status !== 200) throw new Error(`HTTP ${r.status} - ` + t('ErrCheckUrl', { x: '.../RPC2' }));
-      return decResponse(r.body.toString('utf8'));
+      return decResponse(r.text);
     });
   }
 
@@ -235,4 +232,4 @@ class RTorrent {
   }
 }
 
-module.exports = RTorrent;
+export default RTorrent;

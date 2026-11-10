@@ -1,9 +1,6 @@
 // qBittorrent via WebUI API v2 (.../api/v2/...) med cookie-login.
 // Logger ind igen, hvis sessionen er udløbet (403).
-'use strict';
-
-const crypto = require('crypto');
-const { request, cookieFrom, Serial, compute, num, str, pos, t } = require('./common');
+import { request, utf8, cookieFrom, Serial, compute, num, str, pos, t } from './common.js';
 
 // Basisadressen til WebUI, fx https://bruger.server.usbx.me/qbittorrent
 function normalizeUrl(u) {
@@ -26,7 +23,7 @@ class QBittorrent {
     if (this.cookie) headers.Cookie = this.cookie;
     if (body != null) headers['Content-Type'] = contentType;
     const r = await request(this.c.url + path, { method: body != null ? 'POST' : 'GET', headers, body, insecure: this.c.insecure });
-    const text = r.body.toString('utf8');
+    const text = r.text;
     if (path === '/api/v2/auth/login' && r.status === 200 && text.trim() === 'Ok.') {
       this.cookie = cookieFrom(r.headers, (n) => n.toUpperCase().includes('SID'));
     }
@@ -133,20 +130,20 @@ class QBittorrent {
 
   // torrents/add kræver multipart/form-data
   async add({ urls, file }, start, dir) {
-    const bnd = '----Torrentry' + crypto.randomBytes(8).toString('hex');
+    const bnd = '----Torrentry' + [...crypto.getRandomValues(new Uint8Array(8))].map((b) => b.toString(16).padStart(2, '0')).join('');
     const parts = [];
-    const field = (name, value) => parts.push(Buffer.from(`--${bnd}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`, 'utf8'));
+    const field = (name, value) => parts.push(utf8(`--${bnd}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
     if (urls) field('urls', urls);
     // "stopped" er navnet i qBittorrent 5, "paused" i ældre versioner
     field('stopped', start ? 'false' : 'true');
     field('paused', start ? 'false' : 'true');
     if (dir) field('savepath', dir);
     if (file) {
-      parts.push(Buffer.from(`--${bnd}\r\nContent-Disposition: form-data; name="torrents"; filename="upload.torrent"\r\nContent-Type: application/x-bittorrent\r\n\r\n`, 'utf8'));
-      parts.push(file, Buffer.from('\r\n'));
+      parts.push(utf8(`--${bnd}\r\nContent-Disposition: form-data; name="torrents"; filename="upload.torrent"\r\nContent-Type: application/x-bittorrent\r\n\r\n`));
+      parts.push(file, utf8('\r\n'));
     }
-    parts.push(Buffer.from(`--${bnd}--\r\n`));
-    await this.cmd('/api/v2/torrents/add', Buffer.concat(parts), 'multipart/form-data; boundary=' + bnd);
+    parts.push(utf8(`--${bnd}--\r\n`));
+    await this.cmd('/api/v2/torrents/add', new Uint8Array(await new Blob(parts).arrayBuffer()), 'multipart/form-data; boundary=' + bnd);
   }
   addFile(buf, start, dir) { return this.add({ file: buf }, start, dir); }
   addUrl(url, start, dir) { return this.add({ urls: url }, start, dir); }
@@ -165,4 +162,4 @@ class QBittorrent {
   }
 }
 
-module.exports = QBittorrent;
+export default QBittorrent;

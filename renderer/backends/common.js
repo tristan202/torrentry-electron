@@ -4,51 +4,47 @@
 //   details(kind, hash)            -> trackers | peers | files (kind = navnet)
 //   action(act, hashes)            -> act = 'start' | 'stop' | 'recheck'
 //   remove(hashes, withData)       -> { warn } (kaster ved fejl)
-//   addFile(buf, start, dir)       -> kaster ved fejl
+//   addFile(bytes, start, dir)     -> kaster ved fejl
 //   addUrl(url, start, dir)        -> kaster ved fejl
 //   test()                         -> tekst til "Test forbindelse"
 // Fejl kastes som Error med en oversat besked, klar til at blive vist.
-'use strict';
+/* global I18N */
 
-const http = require('http');
-const https = require('https');
-const { t } = require('../renderer/strings.js');
+export const t = (k, v) => I18N.t(k, v);
+const { invoke } = window.__TAURI__.core;
 
-const TIMEOUT = 20000;
+// Uint8Array <-> base64 (IPC'en til Rust sender binære data som base64)
+export function b64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+export const utf8 = (s) => new TextEncoder().encode(s);
 
-// Sender en forespørgsel og giver { status, headers, body (Buffer) } tilbage.
+// Sender en forespørgsel via Rust og giver { status, headers, text } tilbage.
+// Header-navne er små bogstaver; set-cookie er en liste.
 // insecure = ignorer certifikatfejl (feltet "Ignorer SSL-certifikatfejl").
-function request(url, { method = 'GET', headers = {}, body = null, insecure = false } = {}) {
-  return new Promise((resolve, reject) => {
-    let u;
-    try { u = new URL(url); } catch { return reject(new Error(t('ErrConnect') + ` (${url})`)); }
-    const lib = u.protocol === 'http:' ? http : https;
-    const data = body == null ? null : Buffer.isBuffer(body) ? body : Buffer.from(body, 'utf8');
-    const req = lib.request(u, {
-      method,
-      headers: { 'User-Agent': 'Torrentry', ...headers, ...(data ? { 'Content-Length': data.length } : {}) },
-      rejectUnauthorized: !insecure,
-      timeout: TIMEOUT,
-    }, (res) => {
-      const chunks = [];
-      res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
-      res.on('error', (e) => reject(connErr(e)));
+export async function request(url, { method = 'GET', headers = {}, body = null, insecure = false } = {}) {
+  let r;
+  try {
+    r = await invoke('http', {
+      url, method, insecure,
+      headers: { 'User-Agent': 'Torrentry', ...headers },
+      body: body == null ? null : b64(typeof body === 'string' ? utf8(body) : body),
     });
-    req.on('timeout', () => req.destroy(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' })));
-    req.on('error', (e) => reject(connErr(e)));
-    if (data) req.write(data);
-    req.end();
-  });
-}
-function connErr(e) {
-  return new Error(`${t('ErrConnect')} (${e.code || e.message})`);
+  } catch (e) {
+    throw new Error(`${t('ErrConnect')} (${e})`);
+  }
+  const h = {};
+  for (const [k, v] of Object.entries(r.headers)) h[k] = k === 'set-cookie' ? v : v.join(', ');
+  return { status: r.status, headers: h, text: new TextDecoder().decode(unb64(r.body)) };
 }
 
-const basicAuth = (user, pass) => 'Basic ' + Buffer.from(`${user}:${pass}`, 'utf8').toString('base64');
+export const basicAuth = (user, pass) => 'Basic ' + b64(utf8(`${user}:${pass}`));
 
 // Cookie "navn=værdi" fra Set-Cookie, hvis navnet opfylder test()
-function cookieFrom(headers, test) {
+export function cookieFrom(headers, test) {
   for (const c of [].concat(headers['set-cookie'] || [])) {
     const kv = c.split(';')[0].trim();
     if (test(kv.split('=')[0])) return kv;
@@ -57,7 +53,7 @@ function cookieFrom(headers, test) {
 }
 
 // Ét kald ad gangen pr. klient – login og session-id deles mellem kaldene
-class Serial {
+export class Serial {
   constructor() { this._q = Promise.resolve(); }
   run(fn) {
     const p = this._q.then(fn, fn);
@@ -69,7 +65,7 @@ class Serial {
 // Udleder forløb, ETA og status ud fra de rå felter. Felterne state/complete/
 // active/hashing følger rTorrents betydning; de andre klienter sætter dem, så
 // resultatet bliver det samme.
-function compute(x) {
+export function compute(x) {
   const progress = x.complete ? 100 : x.size > 0 ? (x.done * 100) / x.size : 0;
   let status;
   if (x.hashing) status = 'checking';
@@ -91,8 +87,6 @@ function compute(x) {
   };
 }
 
-const num = (v) => (typeof v === 'number' && isFinite(v) ? v : Number(v) || 0);
-const str = (v) => (typeof v === 'string' ? v : '');
-const pos = (v) => Math.max(0, num(v));
-
-module.exports = { request, basicAuth, cookieFrom, Serial, compute, num, str, pos, t };
+export const num = (v) => (typeof v === 'number' && isFinite(v) ? v : Number(v) || 0);
+export const str = (v) => (typeof v === 'string' ? v : '');
+export const pos = (v) => Math.max(0, num(v));

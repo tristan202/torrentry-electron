@@ -1,23 +1,20 @@
 # Torrentry
 
-A remote control for rTorrent, qBittorrent, Transmission and Deluge. Built with Electron and shares its look with [Skal](../Skal). Version 2 replaces the original PureBasic version.
+A remote control for rTorrent, qBittorrent, Transmission and Deluge. Built with [Tauri](https://tauri.app) and shares its look with [Skal](../Skal). Version 3 replaces the Electron-based 2.x, which replaced the original PureBasic version.
 
 ## Getting started
 
-Requires Node.js 18 or newer.
+Requires Node.js 18 or newer, Rust, and on Windows the Visual Studio C++ build tools.
 
 ```
 npm install
 npm start
 ```
 
-Build an installable app:
+Build the Windows installer (ends up in `src-tauri/target/release/bundle/nsis/`):
 
 ```
-npm run dist:win        # Windows installer (recommended)
-npm run dist:zip        # Windows: zip that can be extracted and run directly
-npm run dist:portable   # Windows: a single portable .exe (starts slowly)
-npm run dist            # current platform
+npm run dist
 ```
 
 ## Features
@@ -30,10 +27,10 @@ npm run dist            # current platform
 - Add .torrent files (Ctrl+O, or drag them onto the window) and magnet links (Ctrl+U, drag, or paste anywhere).
 - Start, stop, recheck, remove, or remove with data (with confirmation).
 - Test connection from the server editor or the error banner.
-- Passwords are encrypted with the operating system's keyring (DPAPI on Windows).
+- Passwords are stored in Windows Credential Manager.
 - 7 languages: Danish, English, German, French, Italian, Spanish and Swedish.
 
-On first start, servers and language are imported from the PureBasic version's `%APPDATA%\Torrentry\servers.ini` (or the older `rTorrentRemote` folder). The ini file is left untouched.
+On first start, servers, passwords and language are taken from 2.x (`%APPDATA%\Torrentry\servers.json`), or else from the PureBasic version's `servers.ini`. The old files are left untouched, so 2.x keeps working.
 
 | Key | Action |
 |---|---|
@@ -47,6 +44,7 @@ On first start, servers and language are imported from the PureBasic version's `
 
 ## Layout
 
-- `main.js` – window, storage (`servers.json`, `prefs.json` in the user data folder) and IPC
-- `backends/` – one file per client, all with the same methods (see `backends/common.js`)
-- `renderer/` – the user interface; `strings.js` holds all texts
+- `src-tauri/` – the Rust side: HTTP requests, files in `%APPDATA%\Torrentry`, passwords, and reading 2.x's encrypted passwords
+- `renderer/app.js` – servers, migration and polling (the `api` the interface uses)
+- `renderer/backends/` – one file per client, all with the same methods (see `common.js`)
+- `renderer/renderer.js` – the user interface; `strings.js` holds all texts

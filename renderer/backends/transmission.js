@@ -1,8 +1,6 @@
 // Transmission via JSON-RPC (.../transmission/rpc) med Basic-auth.
 // Serveren svarer 409 med et session-id, som skal sendes med igen.
-'use strict';
-
-const { request, basicAuth, Serial, compute, num, str, pos, t } = require('./common');
+import { request, b64, basicAuth, Serial, compute, num, str, pos, t } from './common.js';
 
 // Accepterer fx https://host, https://host/transmission eller .../transmission/web/
 function normalizeUrl(u) {
@@ -39,7 +37,7 @@ class Transmission {
         if (r.status === 401) throw new Error('HTTP 401 - ' + t('ErrBadLogin'));
         if (r.status !== 200) throw new Error(`HTTP ${r.status} - ` + t('ErrCheckUrl', { x: '.../transmission/rpc' }));
         let j;
-        try { j = JSON.parse(r.body.toString('utf8')); } catch { throw new Error(t('ErrInvalidResponse', { x: 'Transmission' })); }
+        try { j = JSON.parse(r.text); } catch { throw new Error(t('ErrInvalidResponse', { x: 'Transmission' })); }
         if (j.result !== 'success') throw new Error(j.result || t('ErrInvalidResponse', { x: 'Transmission' }));
         return j.arguments || {};
       }
@@ -113,7 +111,7 @@ class Transmission {
     if (dir) a['download-dir'] = dir;
     return a;
   }
-  async addFile(buf, start, dir) { await this.rpc('torrent-add', this.addArgs('metainfo', buf.toString('base64'), start, dir)); }
+  async addFile(buf, start, dir) { await this.rpc('torrent-add', this.addArgs('metainfo', b64(buf), start, dir)); }
   async addUrl(url, start, dir) { await this.rpc('torrent-add', this.addArgs('filename', url, start, dir)); }
 
   async test() {
@@ -129,4 +127,4 @@ class Transmission {
   }
 }
 
-module.exports = Transmission;
+export default Transmission;
