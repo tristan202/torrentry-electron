@@ -71,7 +71,7 @@ const COLS = [
 // ---------- Tilstand ----------
 // Visningsvalg huskes i browserlageret (kolonner, sortering, filter, ...)
 function loadUi() { try { return JSON.parse(localStorage.getItem('torrentry.ui')) || {}; } catch { return {}; } }
-const ui = { filter: 'all', sort: null, desc: false, hidden: ['seedtime'], widths: {}, tab: 'general', detH: 260, sidebar: true, ...loadUi() };
+const ui = { filter: 'all', sort: null, desc: false, hidden: ['seedtime'], widths: {}, order: [], tab: 'general', detH: 260, sidebar: true, ...loadUi() };
 function saveUi() { try { localStorage.setItem('torrentry.ui', JSON.stringify(ui)); } catch {} }
 
 const state = {
@@ -93,7 +93,9 @@ const state = {
   editing: null,
 };
 
-const visibleCols = () => COLS.filter((c) => c.k === 'name' || !ui.hidden.includes(c.k));
+// Rækkefølgen kan ændres ved at trække i overskrifterne; nye kolonner kommer sidst
+const orderedCols = () => [...ui.order, ...COLS.map((c) => c.k).filter((k) => !ui.order.includes(k))].map((k) => COLS.find((c) => c.k === k)).filter(Boolean);
+const visibleCols = () => orderedCols().filter((c) => c.k === 'name' || !ui.hidden.includes(c.k));
 const currentServer = () => state.servers.find((s) => s.id === state.current) || null;
 const unwrap = (r) => { if (r.error) throw new Error(r.error); return r.value; };
 
@@ -163,7 +165,7 @@ function sizeCols() {
 function renderHead() {
   $('#tlist thead').innerHTML = '<tr>' + visibleCols().map((c) => {
     const sorted = ui.sort === c.k;
-    return `<th data-k="${c.k}" class="${c.num ? 'num' : ''} ${sorted ? 'sorted' : ''}" ${sorted ? `data-dir="${ui.desc ? '▼' : '▲'}"` : ''}>${esc(plain(c.l))}<span class="rz"></span></th>`;
+    return `<th data-k="${c.k}" draggable="true" class="${c.num ? 'num' : ''} ${sorted ? 'sorted' : ''}" ${sorted ? `data-dir="${ui.desc ? '▼' : '▲'}"` : ''}>${esc(plain(c.l))}<span class="rz"></span></th>`;
   }).join('') + '</tr>';
   sizeCols();
   state.shown = []; // kolonnerne er ændret – alle rækker tegnes forfra
@@ -701,7 +703,7 @@ function wire() {
   });
   $('#tlist thead').addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    showCtx(COLS.slice(1).map((c) => ({
+    showCtx(orderedCols().filter((c) => c.k !== 'name').map((c) => ({
       label: plain(c.l), check: !ui.hidden.includes(c.k),
       run: () => {
         ui.hidden = ui.hidden.includes(c.k) ? ui.hidden.filter((x) => x !== c.k) : [...ui.hidden, c.k];
@@ -710,6 +712,43 @@ function wire() {
         renderList();
       },
     })), e.clientX, e.clientY);
+  });
+  // Træk en overskrift hen på en anden for at flytte kolonnen
+  let dragK = null;
+  const marks = ['drop-before', 'drop-after'];
+  const after = (e, th) => e.clientX > th.getBoundingClientRect().left + th.offsetWidth / 2;
+  $('#tlist thead').addEventListener('dragstart', (e) => {
+    const th = e.target.closest('th');
+    dragK = th.dataset.k;
+    e.dataTransfer.setData('text/x-torrentry-col', dragK);
+    e.dataTransfer.effectAllowed = 'move';
+    th.classList.add('dragging');
+  });
+  $('#tlist thead').addEventListener('dragover', (e) => {
+    const th = e.target.closest('th');
+    if (!dragK || !th) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    for (const x of $$('#tlist th')) x.classList.toggle(marks[0], false), x.classList.toggle(marks[1], false);
+    if (th.dataset.k !== dragK) th.classList.add(marks[after(e, th) ? 1 : 0]);
+  });
+  $('#tlist thead').addEventListener('drop', (e) => {
+    const th = e.target.closest('th');
+    if (!dragK || !th) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (th.dataset.k === dragK) return;
+    const keys = orderedCols().map((c) => c.k).filter((k) => k !== dragK);
+    keys.splice(keys.indexOf(th.dataset.k) + (after(e, th) ? 1 : 0), 0, dragK);
+    ui.order = keys;
+    saveUi();
+    renderHead();
+    renderList();
+  });
+  $('#tlist thead').addEventListener('dragend', () => {
+    dragK = null;
+    for (const x of $$('#tlist th')) x.classList.toggle('dragging', false), x.classList.toggle(marks[0], false), x.classList.toggle(marks[1], false);
   });
 
   // Rækker: klik, Ctrl+klik, Shift+klik og højreklik

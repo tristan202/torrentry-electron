@@ -1,7 +1,7 @@
 {
   "name": "torrentry",
   "productName": "Torrentry",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Torrentry – a remote control for rTorrent, qBittorrent, Transmission and Deluge",
   "author": "Allan",
   "private": true,

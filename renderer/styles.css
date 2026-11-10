@@ -104,6 +104,9 @@ svg.fill { fill: currentColor; stroke: none; }
 #tlist th.num { text-align: right; }
 #tlist th.sorted { color: var(--text); }
 #tlist th.sorted::after { content: " " attr(data-dir); font-size: 9px; }
+#tlist th.dragging { opacity: .45; }
+#tlist th.drop-before { box-shadow: inset 3px 0 0 var(--accent); }
+#tlist th.drop-after { box-shadow: inset -3px 0 0 var(--accent); }
 #tlist th .rz { position: absolute; top: 0; right: 0; width: 7px; height: 100%; cursor: col-resize; }
 #tlist th .rz::after { content: ""; position: absolute; top: 25%; bottom: 25%; right: 3px; width: 1px; background: var(--border); }
 #tlist td { padding: 0 10px; height: 31px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid #1d2131; font-size: 13px; }
