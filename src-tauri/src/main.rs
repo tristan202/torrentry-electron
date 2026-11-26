@@ -4,8 +4,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
-use std::{collections::HashMap, fs, path::PathBuf, sync::OnceLock, time::Duration};
-use tauri::{AppHandle, Manager};
+use std::{collections::HashMap, fs, path::PathBuf, sync::Mutex, sync::OnceLock, time::Duration};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(serde::Serialize)]
 struct HttpResp {
@@ -165,10 +165,48 @@ fn dpapi_unprotect(_: &[u8]) -> Option<Vec<u8>> {
     None
 }
 
+// Magnet-links og .torrent-filer, som Windows starter Torrentry med (browseren
+// eller Stifinder). De samles her, indtil brugerfladen henter dem.
+#[derive(Default, serde::Serialize)]
+struct Opened {
+    magnets: Vec<String>,
+    files: Vec<OpenedFile>,
+}
+#[derive(serde::Serialize)]
+struct OpenedFile {
+    name: String,
+    data: String, // base64
+}
+struct Pending(Mutex<Opened>);
+
+fn collect(app: &AppHandle, args: &[String]) {
+    let pending = app.state::<Pending>();
+    let mut o = pending.0.lock().unwrap();
+    for a in args.iter().skip(1) {
+        let lower = a.to_lowercase();
+        if lower.starts_with("magnet:") {
+            o.magnets.push(a.clone());
+        } else if lower.ends_with(".torrent") {
+            if let Ok(b) = fs::read(a) {
+                let name = std::path::Path::new(a).file_name().map_or(a.clone(), |n| n.to_string_lossy().into_owned());
+                o.files.push(OpenedFile { name, data: B64.encode(b) });
+            }
+        }
+    }
+}
+
+#[tauri::command]
+fn take_opened(state: tauri::State<Pending>) -> Opened {
+    std::mem::take(&mut *state.0.lock().unwrap())
+}
+
 fn main() {
     tauri::Builder::default()
-        // Kun én instans – en ny start henter det kørende vindue frem
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+        // Kun én instans – en ny start henter det kørende vindue frem og
+        // giver dens magnet-links/filer videre
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _| {
+            collect(app, &argv);
+            let _ = app.emit("opened", ());
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.unminimize();
                 let _ = w.show();
@@ -176,13 +214,15 @@ fn main() {
             }
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
+        .manage(Pending(Mutex::new(Opened::default())))
         .setup(|app| {
+            collect(app.handle(), &std::env::args().collect::<Vec<_>>());
             if let Some(w) = app.get_webview_window("main") {
                 w.set_title(&format!("Torrentry {}", app.package_info().version))?;
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![http, read_data, write_data, secret_get, secret_set, electron_decrypt])
+        .invoke_handler(tauri::generate_handler![http, read_data, write_data, secret_get, secret_set, electron_decrypt, take_opened])
         .run(tauri::generate_context!())
         .expect("Torrentry kunne ikke starte");
 }

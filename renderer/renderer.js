@@ -888,5 +888,11 @@ async function init() {
   const s = state.servers.find((x) => x.id === state.info.selected) || state.servers[0];
   if (s) selectServer(s.id);
   else { renderAll(); openEditor(null); }
+  // Magnet-links og .torrent-filer åbnet fra browseren tilføjes den aktive server
+  api.onOpened(({ urls, files }) => {
+    if (!needServer()) return;
+    if (files.length) api.addFiles(state.current, files, {}).then(reportAdd);
+    if (urls) api.addUrls(state.current, urls, {}).then(reportAdd);
+  });
 }
 init();

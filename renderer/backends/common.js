@@ -19,7 +19,7 @@ export function b64(bytes) {
   for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(s);
 }
-const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+export const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 export const utf8 = (s) => new TextEncoder().encode(s);
 
 // Sender en forespørgsel via Rust og giver { status, headers, text } tilbage.

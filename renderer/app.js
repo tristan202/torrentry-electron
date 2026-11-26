@@ -4,6 +4,7 @@
 // Windows' legitimationsadministrator.
 /* global I18N */
 import * as backends from './backends/index.js';
+import { unb64 } from './backends/common.js';
 
 const { invoke } = window.__TAURI__.core;
 const t = (k, v) => I18N.t(k, v);
@@ -174,6 +175,16 @@ window.api = {
     }
     return { added, errors };
   }),
+  // Magnet-links og .torrent-filer, som Torrentry er startet med (fra browseren
+  // eller Stifinder). fn får { urls, files } – ved start og hver gang der kommer flere.
+  onOpened(fn) {
+    const take = async () => {
+      const o = await invoke('take_opened');
+      if (o.magnets.length || o.files.length) fn({ urls: o.magnets.join('\n'), files: o.files.map((f) => new File([unb64(f.data)], f.name)) });
+    };
+    window.__TAURI__.event.listen('opened', take);
+    take();
+  },
   // Magnet-links og http(s)-links, ét pr. linje
   addUrls: wrap(async (id, text, opts = {}) => {
     const c = await client(id);
